@@ -40,6 +40,7 @@ class FollowAdmin(admin.ModelAdmin):
         'author'
     )
 
+
 admin.site.register(Follow, FollowAdmin)
 admin.site.register(Post, PostAdmin)
 admin.site.register(Group, GroupAdmin)

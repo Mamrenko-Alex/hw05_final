@@ -46,13 +46,13 @@ class PostFormTests(TestCase):
 
     def test_create_post_request_user(self):
         posts_count = Post.objects.count()
-        small_gif = (            
-             b'\x47\x49\x46\x38\x39\x61\x02\x00'
-             b'\x01\x00\x80\x00\x00\x00\x00\x00'
-             b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
-             b'\x00\x00\x00\x2C\x00\x00\x00\x00'
-             b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-             b'\x0A\x00\x3B'
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
         )
         uploaded = SimpleUploadedFile(
             name='small.gif',
@@ -177,6 +177,7 @@ class CommentFormTests(TestCase):
         self.assertEqual(Comment.objects.count(), comments_count)
         self.assertRedirects(response, f'{url_login}?next={url_add_comment}')
 
+
 class FollowFormTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -188,7 +189,6 @@ class FollowFormTests(TestCase):
             text='Тестовый пост длинной более 15 символов'
         )
         cls.form = PostForm()
-
 
     def setUp(self):
         self.guest_user = Client()
@@ -207,7 +207,7 @@ class FollowFormTests(TestCase):
         self.assertEqual(post, FollowFormTests.post)
         self.assertEqual(
             Follow.objects.filter(author=FollowFormTests.author).count(),
-            subscribers_count+1
+            subscribers_count + 1
         )
 
     def test_following_author_guest_user(self):
@@ -238,6 +238,5 @@ class FollowFormTests(TestCase):
         unfollowing.delete()
         self.assertEqual(
             Follow.objects.filter(author=FollowFormTests.author).count(),
-            subscribers_count-1    
+            subscribers_count - 1
         )
-

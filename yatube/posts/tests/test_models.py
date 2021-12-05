@@ -96,8 +96,8 @@ class PostModelsTest(TestCase):
     def test_help_text_model_comment(self):
         fields = {
             'text': 'выскажите своё мнение',
-            'author':'добавляется автоматически',
-            'created':'добавляется автоматически'
+            'author': 'добавляется автоматически',
+            'created': 'добавляется автоматически'
         }
         for field, help_text in fields.items():
             with self.subTest(field=field):

@@ -46,7 +46,7 @@ def profile(request, username):
     context = {
         'author': author,
         'posts': posts,
-        'page_obj': page_obj        
+        'page_obj': page_obj
     }
     if request.user.is_authenticated:
         if request.user.username is not author.username:
@@ -63,8 +63,8 @@ def post_detail(request, post_id):
     template = 'posts/post_detail.html'
     context = {
         'post': post,
-        'form':form,
-        'comments':comments
+        'form': form,
+        'comments': comments
     }
     return render(request, template, context)
 
@@ -131,6 +131,7 @@ def follow_index(request):
     }
     return render(request, template, context)
 
+
 @login_required(login_url='/auth/login/')
 def profile_follow(request, username):
     author = get_object_or_404(User, username=username)
@@ -142,7 +143,7 @@ def profile_follow(request, username):
 
 @login_required(login_url='/auth/login/')
 def profile_unfollow(request, username):
-    author = get_object_or_404(User, username=username) 
+    author = get_object_or_404(User, username=username)
     following = Follow.objects.filter(user=request.user)
     following = Follow.objects.filter(author=author)
     following.delete()
