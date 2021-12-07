@@ -10,7 +10,7 @@ from django.core.management.base import BaseCommand
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from ..models import Comment, Group, Post
+from ..models import Comment, Follow, Group, Post
 
 User = get_user_model()
 
@@ -231,3 +231,87 @@ class PaginatorViewsTests(TestCase):
             kwargs={'username': PaginatorViewsTests.user}
         ))
         self.assertEqual(len(response.context['page_obj']), self.post_per_page)
+
+
+class FollowFormTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.author = User.objects.create_user(username='author')
+        cls.user = User.objects.create_user(username='user')
+        cls.post = Post.objects.create(
+            author=cls.author,
+            text='Тестовый пост длинной более 15 символов'
+        )
+
+    def setUp(self):
+        self.guest_user = Client()
+        self.request_user = Client()
+        self.request_user.force_login(FollowFormTests.user)
+
+    def test_following_author_request_user(self):
+        subscribers_count = Follow.objects.filter(
+            author=FollowFormTests.author).count()
+        self.request_user.get(reverse(
+            'posts:profile_follow',
+            kwargs={'username': FollowFormTests.author.username})
+        )
+        response = self.request_user.get(reverse('posts:follow_index'))
+        post = response.context['page_obj'][0]
+        self.assertEqual(post, FollowFormTests.post)
+        self.assertEqual(
+            Follow.objects.filter(author=FollowFormTests.author).count(),
+            subscribers_count + 1
+        )
+
+    def test_following_author_guest_user(self):
+        subscribers_count = Follow.objects.filter(
+            author=FollowFormTests.author).count()
+        following = self.guest_user.get(reverse(
+            'posts:profile_follow',
+            kwargs={'username': FollowFormTests.author.username})
+        )
+        login_url = reverse('users:login')
+        profile_follow_url = reverse(
+            'posts:profile_follow',
+            kwargs={'username': FollowFormTests.author.username}
+        )
+        self.assertRedirects(following, f'{login_url}?next={profile_follow_url}')
+        response = self.guest_user.get(reverse('posts:follow_index'))
+        posts = response.context
+        self.assertIsNone(posts)
+        self.assertEqual(
+            Follow.objects.filter(author=FollowFormTests.author).count(),
+            subscribers_count
+        )
+
+    def test_following_user_not_author(self):
+        subscribers_count = Follow.objects.filter(
+            author=FollowFormTests.user).count()
+        self.request_user.get(reverse(
+            'posts:profile_follow',
+            kwargs={'username': FollowFormTests.user.username})
+        )
+        self.assertEqual(
+            Follow.objects.filter(author=FollowFormTests.user).count(),
+            subscribers_count
+        )
+
+    def test_unfollowing_author(self):
+        Follow.objects.create(
+            author=FollowFormTests.author,
+            user=FollowFormTests.user
+        )
+        subscribers_count = Follow.objects.filter(
+            author=FollowFormTests.author).count()
+        response = self.request_user.get(reverse('posts:follow_index'))
+        post = response.context['page_obj'][0]
+        self.assertEqual(post, FollowFormTests.post)
+        self.request_user.get(reverse(
+            'posts:profile_unfollow',
+            kwargs={'username': FollowFormTests.author.username})
+        )
+        self.assertEqual(
+            Follow.objects.filter(author=FollowFormTests.author).count(),
+            subscribers_count - 1
+        )

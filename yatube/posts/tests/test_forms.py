@@ -165,7 +165,7 @@ class CommentFormTests(TestCase):
 
     def test_add_comment_guest_user(self):
         comments_count = Comment.objects.count()
-        url_login = reverse("users:login")
+        url_login = reverse('users:login')
         url_add_comment = reverse(
             'posts:add_comment',
             kwargs={'post_id': CommentFormTests.post.pk}
@@ -176,67 +176,3 @@ class CommentFormTests(TestCase):
         self.assertEqual(response.status_code, HTTPStatus.FOUND)
         self.assertEqual(Comment.objects.count(), comments_count)
         self.assertRedirects(response, f'{url_login}?next={url_add_comment}')
-
-
-class FollowFormTests(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.author = User.objects.create_user(username='author')
-        cls.user = User.objects.create_user(username='user')
-        cls.post = Post.objects.create(
-            author=cls.author,
-            text='Тестовый пост длинной более 15 символов'
-        )
-        cls.form = PostForm()
-
-    def setUp(self):
-        self.guest_user = Client()
-        self.request_user = Client()
-        self.request_user.force_login(FollowFormTests.user)
-
-    def test_following_author_request_user(self):
-        subscribers_count = Follow.objects.filter(
-            author=FollowFormTests.author).count()
-        Follow.objects.create(
-            author=FollowFormTests.author,
-            user=FollowFormTests.user
-        )
-        response = self.request_user.get(reverse('posts:follow_index'))
-        post = response.context['page_obj'][0]
-        self.assertEqual(post, FollowFormTests.post)
-        self.assertEqual(
-            Follow.objects.filter(author=FollowFormTests.author).count(),
-            subscribers_count + 1
-        )
-
-    def test_following_author_guest_user(self):
-        subscribers_count = Follow.objects.filter(
-            author=FollowFormTests.author).count()
-        response = self.guest_user.get(reverse('posts:follow_index'))
-        posts = response.context
-        self.assertIsNone(posts)
-        self.assertEqual(
-            Follow.objects.filter(author=FollowFormTests.author).count(),
-            subscribers_count
-        )
-
-    def test_unfollowing_author(self):
-        Follow.objects.create(
-            author=FollowFormTests.author,
-            user=FollowFormTests.user
-        )
-        subscribers_count = Follow.objects.filter(
-            author=FollowFormTests.author).count()
-        response = self.request_user.get(reverse('posts:follow_index'))
-        post = response.context['page_obj'][0]
-        self.assertEqual(post, FollowFormTests.post)
-        unfollowing = Follow.objects.filter(
-            author=FollowFormTests.author,
-            user=FollowFormTests.user
-        )
-        unfollowing.delete()
-        self.assertEqual(
-            Follow.objects.filter(author=FollowFormTests.author).count(),
-            subscribers_count - 1
-        )

@@ -33,6 +33,10 @@ class URLTests(TestCase):
         self.post_detail = f'/posts/{URLTests.post.id}/'
         self.post_create = '/create/'
         self.post_update = f'/posts/{URLTests.post.id}/edit/'
+        self.add_comment = f'posts/{URLTests.post.id}/comment/'
+        self.follow_index = '/follow/'
+        self.profile_follow = f'/profile/{URLTests.user}/follow/'
+        self. profile_unfollow = f'/profile/{URLTests.user}/unfollow/'
 
     def test_urls_uses_correct_template(self):
         templatres_urls_names = {
@@ -42,6 +46,7 @@ class URLTests(TestCase):
             'posts/post_detail.html': self.post_detail,
             'posts/create_post.html': self.post_create,
             'posts/update_post.html': self.post_update,
+            'posts/follow.html': self.follow_index
         }
         for template, adress in templatres_urls_names.items():
             with self.subTest(adress=adress):
@@ -56,6 +61,10 @@ class URLTests(TestCase):
             self.post_detail: HTTPStatus.OK,
             self.post_create: HTTPStatus.FOUND,
             self.post_update: HTTPStatus.FOUND,
+            self.add_comment: HTTPStatus.NOT_FOUND,
+            self.follow_index: HTTPStatus.FOUND,
+            self.profile_follow: HTTPStatus.FOUND,
+            self. profile_unfollow: HTTPStatus.FOUND
         }
         for adress, status in url_and_status.items():
             with self.subTest(adress=adress):
@@ -70,6 +79,10 @@ class URLTests(TestCase):
             self.post_detail: HTTPStatus.OK,
             self.post_create: HTTPStatus.OK,
             self.post_update: HTTPStatus.OK,
+            self.add_comment: HTTPStatus.NOT_FOUND,
+            self.follow_index: HTTPStatus.OK,
+            self.profile_follow: HTTPStatus.FOUND,
+            self. profile_unfollow: HTTPStatus.FOUND
         }
         for adress, status in url_and_status.items():
             with self.subTest(adress=adress):
