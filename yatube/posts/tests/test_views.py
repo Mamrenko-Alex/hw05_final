@@ -276,7 +276,10 @@ class FollowFormTests(TestCase):
             'posts:profile_follow',
             kwargs={'username': FollowFormTests.author.username}
         )
-        self.assertRedirects(following, f'{login_url}?next={profile_follow_url}')
+        self.assertRedirects(
+            following,
+            f'{login_url}?next={profile_follow_url}'
+        )
         response = self.guest_user.get(reverse('posts:follow_index'))
         posts = response.context
         self.assertIsNone(posts)

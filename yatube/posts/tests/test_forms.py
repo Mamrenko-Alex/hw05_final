@@ -9,7 +9,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from ..forms import PostForm
-from ..models import Comment, Follow, Group, Post
+from ..models import Comment, Group, Post
 
 User = get_user_model()
 

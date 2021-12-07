@@ -4,7 +4,7 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import CommentForm, PostForm
-from .models import Comment, Follow, Group, Post, User
+from .models import Follow, Group, Post, User
 
 
 def paginator(queryset, request):
@@ -49,8 +49,8 @@ def profile(request, username):
         'page_obj': page_obj
     }
     follow_not_author = (
-        request.user.is_authenticated and
-        (request.user.username is not author.username)
+        request.user.is_authenticated
+        and (request.user.username is not author.username)
     )
     if follow_not_author:
         following = Follow.objects.filter(
