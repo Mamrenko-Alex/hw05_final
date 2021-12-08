@@ -308,9 +308,6 @@ class FollowFormTests(TestCase):
             'posts:profile_follow',
             kwargs={'username': FollowFormTests.author.username})
         )
-        response = self.request_user.get(reverse('posts:follow_index'))
-        post = response.context['page_obj'][0]
-        self.assertEqual(post, FollowFormTests.post)
         self.assertEqual(
             Follow.objects.filter(author=FollowFormTests.author).count(),
             subscribers_count + 1
