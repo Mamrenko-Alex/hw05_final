@@ -118,7 +118,6 @@ class PagesTests(TestCase):
         self.assertEqual(post_text, PagesTests.post.text)
         self.assertEqual(post_image, PagesTests.post.image)
 
-
     def test_group_context(self):
         ''' Страница записей группы.'''
         response = self.request_user.get(reverse(
@@ -206,7 +205,7 @@ class CaheTests(TestCase):
             slug='test_slug',
             description='Тестовое описание',
         )
-        post = Post.objects.create(
+        Post.objects.create(
             author=cls.user,
             text='Тестовый пост длинной более 15 символов',
             group=cls.group
@@ -256,7 +255,7 @@ class PaginatorViewsTests(TestCase):
         Follow.objects.create(
             author=PaginatorViewsTests.author,
             user=PaginatorViewsTests.user
-        ) 
+        )
 
     def test_index_ten_posts(self):
         ''' Паджинатор на главной странице.'''
