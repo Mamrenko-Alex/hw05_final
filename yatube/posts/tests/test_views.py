@@ -6,7 +6,6 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management.base import BaseCommand
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
@@ -63,6 +62,7 @@ class PagesTests(TestCase):
         self.request_user.force_login(PagesTests.user)
 
     def test_pages_uses_correct_template(self):
+        ''' Страница на сайте использует правильный шаблон.'''
         templates_names = {
             'posts/index.html': reverse('posts:index'),
             'posts/group_list.html': reverse(
@@ -81,7 +81,8 @@ class PagesTests(TestCase):
             'posts/update_post.html': reverse(
                 'posts:post_edit',
                 kwargs={'post_id': PagesTests.post.pk}
-            )
+            ),
+            'posts/follow.html': reverse('posts:follow_index')
         }
         for template_name, reverse_name in templates_names.items():
             with self.subTest(reverse_name=reverse_name):
@@ -89,6 +90,7 @@ class PagesTests(TestCase):
                 self.assertTemplateUsed(response, template_name)
 
     def test_index_context(self):
+        ''' Главная страница сайта.'''
         response = self.request_user.get(reverse('posts:index'))
         first_object = response.context['page_obj'][0]
         post_author = first_object.author
@@ -98,7 +100,27 @@ class PagesTests(TestCase):
         self.assertEqual(post_text, PagesTests.post.text)
         self.assertEqual(post_image, PagesTests.post.image)
 
+    def test_follow_index_context(self):
+        ''' Страница с постами авторов на которых подписан.'''
+        client = User.objects.create_user(username='user')
+        self.request_user = Client()
+        self.request_user.force_login(client)
+        Follow.objects.create(
+            author=PagesTests.user,
+            user=client
+        )
+        response = self.request_user.get(reverse('posts:follow_index'))
+        first_object = response.context['page_obj'][0]
+        post_author = first_object.author
+        post_text = first_object.text
+        post_image = first_object.image
+        self.assertEqual(post_author, PagesTests.post.author)
+        self.assertEqual(post_text, PagesTests.post.text)
+        self.assertEqual(post_image, PagesTests.post.image)
+
+
     def test_group_context(self):
+        ''' Страница записей группы.'''
         response = self.request_user.get(reverse(
             'posts:group_list',
             kwargs={'slug': PagesTests.group.slug})
@@ -114,6 +136,7 @@ class PagesTests(TestCase):
         self.assertEqual(post_image, PagesTests.post.image)
 
     def test_profile_context(self):
+        ''' Страница пользователя.'''
         response = self.request_user.get(reverse(
             'posts:profile',
             kwargs={'username': PagesTests.user.username})
@@ -125,6 +148,7 @@ class PagesTests(TestCase):
         self.assertEqual(post_image, PagesTests.post.image)
 
     def test_detail_post_context(self):
+        ''' Детальная информация о посте.'''
         response = self.request_user.get(reverse(
             'posts:post_detail',
             kwargs={'post_id': PagesTests.post.pk})
@@ -140,6 +164,7 @@ class PagesTests(TestCase):
         self.assertEqual(post_comments, PagesTests.comment)
 
     def test_create_post_context(self):
+        ''' Создание поста.'''
         response = self.request_user.get(reverse(
             'posts:post_create')
         )
@@ -155,6 +180,7 @@ class PagesTests(TestCase):
                 self.assertIsInstance(form_field, expected)
 
     def test_update_post_context(self):
+        ''' Редактирование поста.'''
         response = self.request_user.get(reverse(
             'posts:post_edit',
             kwargs={'post_id': PagesTests.post.pk})
@@ -170,24 +196,36 @@ class PagesTests(TestCase):
                 self.assertIsInstance(form_field, expected)
 
 
-class CaheTests(BaseCommand):
-    def handle(self, *args, **kwargs):
-        cache.clear()
-        self.stdout.write('Cleared cache\n')
+class CaheTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='user')
+        cls.group = Group.objects.create(
+            title='Тестовая группа',
+            slug='test_slug',
+            description='Тестовое описание',
+        )
+        post = Post.objects.create(
+            author=cls.user,
+            text='Тестовый пост длинной более 15 символов',
+            group=cls.group
+        )
+
+    def setUp(self):
+        self.request_user = Client()
+        self.request_user.force_login(CaheTests.user)
 
     def test_cahe_index_context(self):
-        response = self.request_user.get(reverse(
-            'posts:index'
-        ))
+        ''' Кеширование главной страницы.'''
+        response = self.request_user.get(reverse('posts:index'))
         first_content = response.content
         old_post = Post.objects.latest('pub_date')
         old_post.delete()
         second_content = response.content
         self.assertEqual(first_content, second_content)
         cache.clear()
-        response_new = self.request_user.get(
-            reverse('posts:index')
-        )
+        response_new = self.request_user.get(reverse('posts:index'))
         second_content = response_new.content
         self.assertNotEqual(first_content, second_content)
 
@@ -196,14 +234,16 @@ class PaginatorViewsTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.user = User.objects.create_user(username='author')
+        cls.author = User.objects.create_user(username='author')
+        cls.user = User.objects.create_user(username='user')
         cls.group = Group.objects.create(
             title='Тестовая группа',
             slug='test_slug',
             description='Тестовое описание',
         )
+
         post_object = Post(
-            author=PagesTests.post.author,
+            author=cls.author,
             text='Тестовый пост длинной более 15 символов',
             group=cls.group
         )
@@ -212,23 +252,35 @@ class PaginatorViewsTests(TestCase):
     def setUp(self):
         self.post_per_page = 10
         self.request_user = Client()
-        self.request_user.force_login(PagesTests.user)
+        self.request_user.force_login(PaginatorViewsTests.user)
+        Follow.objects.create(
+            author=PaginatorViewsTests.author,
+            user=PaginatorViewsTests.user
+        ) 
 
     def test_index_ten_posts(self):
-        response = self.client.get(reverse('posts:index'))
+        ''' Паджинатор на главной странице.'''
+        response = self.request_user.get(reverse('posts:index'))
         self.assertEqual(len(response.context['page_obj']), self.post_per_page)
 
     def test_group_ten_posts(self):
-        response = self.client.get(reverse(
+        ''' Паджинатор на странице группы.'''
+        response = self.request_user.get(reverse(
             'posts:group_list',
             kwargs={'slug': PaginatorViewsTests.group.slug}
         ))
         self.assertEqual(len(response.context['page_obj']), self.post_per_page)
 
+    def test_follow_index_posts(self):
+        ''' Паджинатор на странице подписок.'''
+        response = self.request_user.get(reverse('posts:follow_index'))
+        self.assertEqual(len(response.context['page_obj']), self.post_per_page)
+
     def test_profile_ten_posts(self):
-        response = self.client.get(reverse(
+        '''  Паджинатор на странице аккаунта пользователя.'''
+        response = self.request_user.get(reverse(
             'posts:profile',
-            kwargs={'username': PaginatorViewsTests.user}
+            kwargs={'username': PaginatorViewsTests.author}
         ))
         self.assertEqual(len(response.context['page_obj']), self.post_per_page)
 
@@ -250,6 +302,7 @@ class FollowFormTests(TestCase):
         self.request_user.force_login(FollowFormTests.user)
 
     def test_following_author_request_user(self):
+        ''' Подписка на автора зарегистрированным пользователем.'''
         subscribers_count = Follow.objects.filter(
             author=FollowFormTests.author).count()
         self.request_user.get(reverse(
@@ -265,6 +318,7 @@ class FollowFormTests(TestCase):
         )
 
     def test_following_author_guest_user(self):
+        ''' Подписка на автора анонимным пользователем.'''
         subscribers_count = Follow.objects.filter(
             author=FollowFormTests.author).count()
         following = self.guest_user.get(reverse(
@@ -288,7 +342,8 @@ class FollowFormTests(TestCase):
             subscribers_count
         )
 
-    def test_following_user_not_author(self):
+    def test_subscriber_not_author(self):
+        ''' Пользователь не может подписаться сам на себя.'''
         subscribers_count = Follow.objects.filter(
             author=FollowFormTests.user).count()
         self.request_user.get(reverse(
@@ -301,15 +356,13 @@ class FollowFormTests(TestCase):
         )
 
     def test_unfollowing_author(self):
+        ''' Пользователь может отписаться от автора.'''
         Follow.objects.create(
             author=FollowFormTests.author,
             user=FollowFormTests.user
         )
         subscribers_count = Follow.objects.filter(
             author=FollowFormTests.author).count()
-        response = self.request_user.get(reverse('posts:follow_index'))
-        post = response.context['page_obj'][0]
-        self.assertEqual(post, FollowFormTests.post)
         self.request_user.get(reverse(
             'posts:profile_unfollow',
             kwargs={'username': FollowFormTests.author.username})
