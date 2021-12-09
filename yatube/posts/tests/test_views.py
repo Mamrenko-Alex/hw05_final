@@ -25,6 +25,7 @@ class PagesTests(TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x02\x00'
             b'\x01\x00\x80\x00\x00\x00\x00\x00'
@@ -38,7 +39,6 @@ class PagesTests(TestCase):
             content=small_gif,
             content_type='image/gif'
         )
-        super().setUpClass()
         cls.user = User.objects.create_user(username='author')
         cls.group = Group.objects.create(
             title='Тестовая группа',
@@ -92,24 +92,6 @@ class PagesTests(TestCase):
     def test_index_context(self):
         ''' Главная страница сайта.'''
         response = self.request_user.get(reverse('posts:index'))
-        first_object = response.context['page_obj'][0]
-        post_author = first_object.author
-        post_text = first_object.text
-        post_image = first_object.image
-        self.assertEqual(post_author, PagesTests.post.author)
-        self.assertEqual(post_text, PagesTests.post.text)
-        self.assertEqual(post_image, PagesTests.post.image)
-
-    def test_follow_index_context(self):
-        ''' Страница с постами авторов на которых подписан.'''
-        client = User.objects.create_user(username='user')
-        self.request_user = Client()
-        self.request_user.force_login(client)
-        Follow.objects.create(
-            author=PagesTests.user,
-            user=client
-        )
-        response = self.request_user.get(reverse('posts:follow_index'))
         first_object = response.context['page_obj'][0]
         post_author = first_object.author
         post_text = first_object.text
@@ -284,47 +266,61 @@ class PaginatorViewsTests(TestCase):
         self.assertEqual(len(response.context['page_obj']), self.post_per_page)
 
 
-class FollowFormTests(TestCase):
+class FollowTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+        uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=small_gif,
+            content_type='image/gif'
+        )
         cls.author = User.objects.create_user(username='author')
         cls.user = User.objects.create_user(username='user')
         cls.post = Post.objects.create(
             author=cls.author,
-            text='Тестовый пост длинной более 15 символов'
+            text='Тестовый пост длинной более 15 символов',
+            image=uploaded
         )
 
     def setUp(self):
         self.guest_user = Client()
         self.request_user = Client()
-        self.request_user.force_login(FollowFormTests.user)
+        self.request_user.force_login(FollowTests.user)
 
     def test_following_author_request_user(self):
         ''' Подписка на автора зарегистрированным пользователем.'''
         subscribers_count = Follow.objects.filter(
-            author=FollowFormTests.author).count()
+            author=FollowTests.author).count()
         self.request_user.get(reverse(
             'posts:profile_follow',
-            kwargs={'username': FollowFormTests.author.username})
+            kwargs={'username': FollowTests.author.username})
         )
         self.assertEqual(
-            Follow.objects.filter(author=FollowFormTests.author).count(),
+            Follow.objects.filter(author=FollowTests.author).count(),
             subscribers_count + 1
         )
 
     def test_following_author_guest_user(self):
         ''' Подписка на автора анонимным пользователем.'''
         subscribers_count = Follow.objects.filter(
-            author=FollowFormTests.author).count()
+            author=FollowTests.author).count()
         following = self.guest_user.get(reverse(
             'posts:profile_follow',
-            kwargs={'username': FollowFormTests.author.username})
+            kwargs={'username': FollowTests.author.username})
         )
         login_url = reverse('users:login')
         profile_follow_url = reverse(
             'posts:profile_follow',
-            kwargs={'username': FollowFormTests.author.username}
+            kwargs={'username': FollowTests.author.username}
         )
         self.assertRedirects(
             following,
@@ -334,36 +330,61 @@ class FollowFormTests(TestCase):
         posts = response.context
         self.assertIsNone(posts)
         self.assertEqual(
-            Follow.objects.filter(author=FollowFormTests.author).count(),
+            Follow.objects.filter(author=FollowTests.author).count(),
             subscribers_count
         )
 
     def test_subscriber_not_author(self):
         ''' Пользователь не может подписаться сам на себя.'''
         subscribers_count = Follow.objects.filter(
-            author=FollowFormTests.user).count()
+            author=FollowTests.user).count()
         self.request_user.get(reverse(
             'posts:profile_follow',
-            kwargs={'username': FollowFormTests.user.username})
+            kwargs={'username': FollowTests.user.username})
         )
         self.assertEqual(
-            Follow.objects.filter(author=FollowFormTests.user).count(),
+            Follow.objects.filter(author=FollowTests.user).count(),
             subscribers_count
         )
 
     def test_unfollowing_author(self):
         ''' Пользователь может отписаться от автора.'''
         Follow.objects.create(
-            author=FollowFormTests.author,
-            user=FollowFormTests.user
+            author=FollowTests.author,
+            user=FollowTests.user
         )
         subscribers_count = Follow.objects.filter(
-            author=FollowFormTests.author).count()
+            author=FollowTests.author).count()
         self.request_user.get(reverse(
             'posts:profile_unfollow',
-            kwargs={'username': FollowFormTests.author.username})
+            kwargs={'username': FollowTests.author.username})
         )
         self.assertEqual(
-            Follow.objects.filter(author=FollowFormTests.author).count(),
+            Follow.objects.filter(author=FollowTests.author).count(),
             subscribers_count - 1
         )
+
+    def test_follow_index(self):
+        ''' Страница с постами авторов на которых подписан.
+            Подписан на одного автора
+        '''
+        Follow.objects.create(
+            author=FollowTests.author,
+            user=FollowTests.user
+        )
+        response = self.request_user.get(reverse('posts:follow_index'))
+        first_object = response.context['page_obj'][0]
+        post_author = first_object.author
+        post_text = first_object.text
+        post_image = first_object.image
+        self.assertEqual(post_author, FollowTests.post.author)
+        self.assertEqual(post_text, FollowTests.post.text)
+        self.assertEqual(post_image, FollowTests.post.image)
+
+    def test_follow_index_not_author(self):
+        ''' Страница с постами авторов на которых подписан.
+            Не подписан ни на кого.
+        '''
+        response = self.request_user.get(reverse('posts:follow_index'))
+        posts = response.context['page_obj']
+        self.assertEqual(len(posts), 0)
