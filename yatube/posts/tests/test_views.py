@@ -387,7 +387,8 @@ class FollowTests(TestCase):
         '''
         response = self.request_user.get(reverse('posts:follow_index'))
         posts = response.context['page_obj']
-        self.assertEqual(len(posts), 0)
+        count_post = 0
+        self.assertEqual(len(posts), count_post)
 
     def test_follow_index_quest(self):
         ''' Страница с постами авторов на которых подписан.
