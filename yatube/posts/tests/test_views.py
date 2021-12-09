@@ -388,3 +388,15 @@ class FollowTests(TestCase):
         response = self.request_user.get(reverse('posts:follow_index'))
         posts = response.context['page_obj']
         self.assertEqual(len(posts), 0)
+
+    def test_follow_index_quest(self):
+        ''' Страница с постами авторов на которых подписан.
+            Гость, не может зайти на эту страницу.
+            Редирект на страницу авторизации.
+        '''
+        follow_url = reverse('posts:follow_index')
+        login_url = reverse('users:login')
+        response = self.guest_user.get(follow_url)
+        context = response.context
+        self.assertIsNone(context)
+        self.assertRedirects(response, f'{login_url}?next={follow_url}')
