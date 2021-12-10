@@ -278,18 +278,13 @@ class FollowTests(TestCase):
             b'\x02\x00\x01\x00\x00\x02\x02\x0C'
             b'\x0A\x00\x3B'
         )
-        uploaded = SimpleUploadedFile(
+        cls.uploaded = SimpleUploadedFile(
             name='small.gif',
             content=small_gif,
             content_type='image/gif'
         )
         cls.author = User.objects.create_user(username='author')
         cls.user = User.objects.create_user(username='user')
-        cls.post = Post.objects.create(
-            author=cls.author,
-            text='Тестовый пост длинной более 15 символов',
-            image=uploaded
-        )
 
     def setUp(self):
         self.guest_user = Client()
@@ -368,6 +363,11 @@ class FollowTests(TestCase):
         ''' Страница с постами авторов на которых подписан.
             Подписан на одного автора
         '''
+        post = Post.objects.create(
+            author=FollowTests.author,
+            text='Тестовый пост длинной более 15 символов',
+            image=FollowTests.uploaded
+        )
         Follow.objects.create(
             author=FollowTests.author,
             user=FollowTests.user
@@ -377,9 +377,9 @@ class FollowTests(TestCase):
         post_author = first_object.author
         post_text = first_object.text
         post_image = first_object.image
-        self.assertEqual(post_author, FollowTests.post.author)
-        self.assertEqual(post_text, FollowTests.post.text)
-        self.assertEqual(post_image, FollowTests.post.image)
+        self.assertEqual(post_author, post.author)
+        self.assertEqual(post_text, post.text)
+        self.assertEqual(post_image, post.image)
 
     def test_follow_index_not_author(self):
         ''' Страница с постами авторов на которых подписан.
@@ -387,8 +387,7 @@ class FollowTests(TestCase):
         '''
         response = self.request_user.get(reverse('posts:follow_index'))
         posts = response.context['page_obj']
-        count_post = 0
-        self.assertEqual(len(posts), count_post)
+        self.assertEqual(len(posts), 0)
 
     def test_follow_index_quest(self):
         ''' Страница с постами авторов на которых подписан.
